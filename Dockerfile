@@ -8,12 +8,14 @@ RUN apt-get update && apt-get install -y \
 # 安装 Hermes
 RUN curl -fsSL https://raw.githubusercontent.com/NousResearch/hermes-agent/main/scripts/install.sh | bash
 
-# 设置环境
-ENV HERMES_HOME=/root/.hermes
-ENV HERMES_YOLO_MODE=1
+# 设置环境变量
+ENV HERMES_HOME=/root/.hermes \
+    HERMES_YOLO_MODE=1 \
+    PYTHONUNBUFFERED=1
+
 WORKDIR /root
 
-# 复制本地配置（如果有）
-COPY .hermes /root/.hermes
+# 确保目录存在
+RUN mkdir -p /root/.hermes
 
 CMD ["hermes", "gateway", "run", "--replace"]
