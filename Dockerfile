@@ -28,3 +28,17 @@ dockerfile
     RUN mkdir -p /root/.hermes/logs /root/.hermes/sessions
     
     COPY config.yaml /root/.hermes/config.yaml 2>/dev/null || echo "Using default config"
+    
+    创建 .env 模板
+    RUN cat > /root/.hermes/.env << 'EOF'
+    Hermes Cloud Runtime Environment
+    Keys are injected from Railway Variables
+    EOF
+    
+    RUN ln -sf /root/.local/bin/hermes /usr/local/bin/hermes && \
+        chmod +x /usr/local/bin/hermes
+    
+    COPY railway-startup.sh /root/railway-startup.sh
+    RUN chmod +x /root/railway-startup.sh
+    
+    CMD ["/root/railway-startup.sh"]
