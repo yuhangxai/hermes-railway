@@ -1,44 +1,41 @@
 dockerfile
     FROM python:3.11-slim
     
-    LABEL maintainer="Hermes Agent" \
-          description="Production-ready Hermes Gateway for 24/7 Telegram (Modal/Railway)" \
-          version="2.1"
+    LABEL maintainer="Hermes Agent" description="Simple Hermes Gateway for Railway" version="2.2-simple"
     
-    1. 系统依赖
-    RUN apt-get update && apt-get install -y --no-install-recommends \
-        curl git xz-utils ca-certificates \
-        && rm -rf /var/lib/apt/lists/* \
-        && apt-get clean
+    RUN apt-get update && apt-get install -y curl git xz-utils ca-certificates && rm -rf /var/lib/apt/lists/*
     
-    2. 安装 Hermes
     RUN curl -fsSL https://raw.githubusercontent.com/NousResearch/hermes-agent/main/scripts/install.sh | bash
     
-    3. 关键环境变量
     ENV HERMES_HOME=/root/.hermes \
         HERMES_YOLO_MODE=1 \
         PYTHONUNBUFFERED=1 \
         MODEL_DEFAULT=grok-4.20-0309-reasoning \
-        MODEL_PROVIDER=xai \
-        GATEWAY_TIMEOUT=1800 \
-        HERMES_GATEWAY_STRICT=false
+        MODEL_PROVIDER=xai
     
     WORKDIR /root
-    
     RUN mkdir -p /root/.hermes/logs /root/.hermes/sessions
     
-    COPY config.yaml /root/.hermes/config.yaml 2>/dev/null || echo "Using default config"
-    
-    创建 .env 模板
-    RUN cat > /root/.hermes/.env << 'EOF'
-    Hermes Cloud Runtime Environment
-    Keys are injected from Railway Variables
-    EOF
-    
-    RUN ln -sf /root/.local/bin/hermes /usr/local/bin/hermes && \
-        chmod +x /usr/local/bin/hermes
-    
-    COPY railway-startup.sh /root/railway-startup.sh
-    RUN chmod +x /root/railway-startup.sh
-    
-    CMD ["/root/railway-startup.sh"]
+    关键调试逻辑：直接在启动时写入密钥并设置模型
+    CMD bash -c '
+        echo "=== Railway Startup Debug ==="
+        echo "XAI_API_KEY length: ${#XAI_API_KEY}"
+        if [ -n "$XAI_API_KEY" ]; then
+          echo "XAI_API_KEY=$XAI_API_KEY" >> /root/.hermes/.env
+          echo "✓ XAI_API_KEY loaded successfully"
+        else
+          echo "✗ XAI_API_KEY is missing or empty!"
+        fi
+        if [ -n "$TELEGRAM_BOT_TOKEN" ]; then
+          echo "TELEGRAM_BOT_TOKEN=***" >> /root/.hermes/.env
+          echo "✓ TELEGRAM_BOT_TOKEN loaded"
+        fi
+        echo "Setting model config..."
+        hermes config set model.provider xai
+        hermes config set model.default grok-4.20-0309-reasoning
+        hermes config set model.base_url https://api.x.ai/v1
+        echo "=== Final Config ==="
+        hermes config | grep -E "(model|provider|XAI)"
+        echo "=== Starting Hermes Gateway ==="
+        exec hermes gateway run --replace
+    '
