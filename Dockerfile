@@ -1,8 +1,8 @@
 FROM python:3.11-slim
 
-# 安装系统依赖
+# 安装系统依赖（增加 xz-utils 用于解压 Node.js）
 RUN apt-get update && apt-get install -y \
-    curl git \
+    curl git xz-utils \
     && rm -rf /var/lib/apt/lists/*
 
 # 安装 Hermes
